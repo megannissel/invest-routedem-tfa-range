@@ -1,5 +1,5 @@
 """
-An adaptation of the InVEST RouteDEM model that computes a range of TFAs in a single run.
+An adaptation of the InVEST RouteDEM utility that computes a range of TFAs in a single run.
 
 RouteDEM is a utility for exposing the natcap.invest routing package to UI.
 """
@@ -73,7 +73,7 @@ MODEL_SPEC = spec.ModelSpec(
             name=gettext("threshold flow accumulation value range"),
             about=gettext(
                 "A range for the number of upslope pixels that must flow into a pixel"
-                " before it is classified as a stream. Should be of the form"
+                " before it is classified as a stream. Must be of the form"
                 " start_value:stop_value:step_value"
             ),
             display_name="start_value:stop_value:step_value",
@@ -116,7 +116,8 @@ MODEL_SPEC = spec.ModelSpec(
             path="filled.tif")),
         spec.FLOW_ACCUMULATION,
         spec.FLOW_DIRECTION,
-        spec.SLOPE,
+        spec.SLOPE.model_copy(update=dict(
+            created_if='calculate_slope')),
         spec.STREAM.model_copy(update=dict(
             id="stream_mask_[TFA]",
             path="stream_mask_tfa_[TFA].tif")),
@@ -127,6 +128,7 @@ MODEL_SPEC = spec.ModelSpec(
                 "A vector of line segments indicating the Strahler stream order and other"
                 " properties of each stream segment."
             ),
+            created_if="algorithm == 'd8' and calculate_stream_order",
             geometry_types={"LINESTRING"},
             fields=[
                 spec.NumberOutput(
@@ -230,6 +232,7 @@ MODEL_SPEC = spec.ModelSpec(
                 " subwatershed is created for each tributary of a stream and is"
                 " influenced greatly by your choice of Threshold Flow Accumulation value."
             ),
+            created_if="algorithm == 'd8' and calculate_subwatersheds",
             geometry_types={"POLYGON"},
             fields=[
                 spec.NumberOutput(
@@ -317,15 +320,9 @@ def execute(args):
             one of 'D8' or 'MFD' (case-insensitive). Required when calculating
             flow direction, flow accumulation, stream threshold, and downslope
             distance.
-        args['threshold_flow_accumulation_start'] (int): The starting value for
-            the number of upslope cells that must flow into a cell before it's
-            classified as a stream.
-        args['threshold_flow_accumulation_stop'] (int): The maximum value for
-            the number of upslope cells that must flow into a cell before it's
-            classified as a stream.
-        args['threshold_flow_accumulation_step'] (int): The step value between
-            the Minimum Threshold Flow Accumulation Value and the Maximum
-            Threshold Flow Accumulation Value.
+        args['threshold_flow_accumulation_range'] (string): A range for the number
+            of upslope cells that must flow into a cell before it is classified
+            as a stream. Must be of the form ``start_value:stop_value:step_value``.
         args['calculate_downslope_distance'] (bool): If True, and a stream
             threshold is calculated, model will calculate a downslope
             distance raster in units of pixels.
