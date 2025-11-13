@@ -1,0 +1,15 @@
+{
+    "args": {
+        "algorithm": "D8",
+        "calculate_downslope_distance": true,
+        "calculate_slope": false,
+        "calculate_stream_order": true,
+        "calculate_subwatersheds": true,
+        "dem_band_index": "",
+        "dem_path": "DEM_gura.tif",
+        "results_suffix": "gura",
+        "threshold_flow_accumulation_range": "1000:2001:500"
+    }, 
+    "invest_version": "3.17.0", 
+    "model_id": "invest_routedem_tfa_range@0_0_1"
+}
