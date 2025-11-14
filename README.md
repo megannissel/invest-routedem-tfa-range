@@ -12,7 +12,17 @@ Since threshold flow accumulation is only relevant in cases where streams are ca
 ## Data Needs
 The inputs required by this model are identical to those of the [InVEST RouteDEM utility](https://storage.googleapis.com/releases.naturalcapitalproject.org/invest-userguide/latest/en/routedem.html), with the following exceptions:
 1. This plugin always calculates flow direction, flow accumulation, and streams. As such, the RouteDEM boolean inputs Calculate Flow Direction, Calculate Flow Accumulation, and Calculate Streams have been removed.
-2. The "Threshold Flow Accumulation" input has been replaced by "Threshold Flow Accumulation Range."
+2. The "Threshold Flow Accumulation" input has been replaced by "Threshold Flow Accumulation Range," allowing the model to compute outputs for a range of TFAs in a single run.
+
+### Threshold Flow Accumulation Range
+The Threshold Flow Accumulation (TFA) is a stream delineation algorithm parameter that specifies the number of upstream pixels that must flow into a pixel before it is classified as a stream. In this plugin, this input takes the form ``start_value:stop_value:step_value``, where:
+- ``start_value``: An integer specifying at which value to start.
+- ``stop_value``: An integer specifying at which value to stop (not inclusive).
+- ``step_value``: An integer specifying the incrementation from the ``start_value`` up to the ``stop_value``.
+
+If you wanted the model to calculate results for Threshold Flow Accumulation values of 1000 pixels, 1500 pixels, and 2000 pixels, you would enter ``1000:2001:500``. Note that the ``stop_value`` here is '2001'; since ``stop_value`` is not included; if you entered ``1000:2000:500``, the model would only calculate results for 1000 pixels and 1500 pixels.
+
+For more information on choosing Threshold Flow Accumulation values, see the InVEST Data Sources documentation on [Threshold Flow Accumulation](https://storage.googleapis.com/releases.naturalcapitalproject.org/invest-userguide/latest/en/data_sources.html#threshold-flow-accumulation).
 
 ## Sample Data
 A datastack JSON file is provided in this repo along with a sample DEM raster for example/testing purposes only.

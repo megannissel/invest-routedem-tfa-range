@@ -24,8 +24,8 @@ INVALID_RANGE_MSG = gettext('Provided range contains zero items')
 
 MODEL_SPEC = spec.ModelSpec(
     model_id="invest_routedem_tfa_range",
-    model_title=gettext("RouteDEM with TFA range"),
-    userguide="routedem.html",
+    model_title=gettext("RouteDEM with TFA Range"),
+    userguide="https://github.com/natcap/invest-routedem-tfa-range/blob/main/README.md",
     validate_spatial_overlap=True,
     different_projections_ok=False,
     aliases=(),
@@ -74,7 +74,11 @@ MODEL_SPEC = spec.ModelSpec(
             about=gettext(
                 "A range for the number of upslope pixels that must flow into a pixel"
                 " before it is classified as a stream. Must be of the form"
-                " start_value:stop_value:step_value"
+                " ``start_value:stop_value:step_value``. The model will calculate results"
+                " for each value in this range. For example, with a range input of"
+                " ``1000:2000:500``, the model will calculate results for threshold"
+                " flow accumulation values of 1000 and 1500. Please note that the stop"
+                " value is not inclusive."
             ),
             display_name="start_value:stop_value:step_value",
             regexp="^[0-9]+:[0-9]+:[1-9][0-9]*$"
