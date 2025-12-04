@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "invest_routedem_tfa_range"
 version = "0.0.1"
 dependencies = [
-    "natcap.invest>=3.17.0",
+    "natcap.invest>=3.17.1",
     "pygeoprocessing",
     "taskgraph"
 ]
@@ -16,8 +16,6 @@ description = "RouteDEM that computes a range of TFAs in a single run (an InVEST
 api_version = "v1"
 package_name = "invest_routedem_tfa_range"
 conda_dependencies = [
-  "gdal==3.11.5",
-  "pygeoprocessing",
+  "gdal!=3.11",
   "python==3.13",
-  "taskgraph"
 ]
