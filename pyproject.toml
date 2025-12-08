@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "invest_routedem_tfa_range"
 version = "0.0.1"
 dependencies = [
-    "natcap.invest>=3.17.1",
+    "natcap.invest>=3.17.0",
     "pygeoprocessing",
     "taskgraph"
 ]
