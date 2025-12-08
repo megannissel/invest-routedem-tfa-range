@@ -11,6 +11,7 @@ import pygeoprocessing.routing
 import taskgraph
 
 from natcap.invest import gettext
+from natcap.invest import routedem
 from natcap.invest import spec
 from natcap.invest import utils
 from natcap.invest import validation
@@ -19,7 +20,6 @@ from natcap.invest.unit_registry import u
 
 LOGGER = logging.getLogger(__name__)
 
-INVALID_BAND_INDEX_MSG = gettext('Must be between 1 and {maximum}')
 INVALID_RANGE_MSG = gettext('Provided range contains zero items')
 
 MODEL_SPEC = spec.ModelSpec(
@@ -42,32 +42,9 @@ MODEL_SPEC = spec.ModelSpec(
         spec.WORKSPACE,
         spec.SUFFIX,
         spec.N_WORKERS,
-        spec.DEM.model_copy(update=dict(id="dem_path")),
-        spec.IntegerInput(
-            id="dem_band_index",
-            name=gettext("band index"),
-            about=gettext("Index of the raster band to use, for multi-band rasters."),
-            required=False,
-            units=u.none,
-            expression="value >= 1"
-        ),
-        spec.OptionStringInput(
-            id="algorithm",
-            name=gettext("routing algorithm"),
-            about=gettext("The routing algorithm to use."),
-            options=[
-                spec.Option(
-                    key="D8",
-                    about=(
-                        "All water on a pixel flows into the most downhill of its 8"
-                        " surrounding pixels")),
-                spec.Option(
-                    key="MFD",
-                    about=(
-                        "Flow off a pixel is modeled fractionally so that water is split"
-                        " among multiple downslope pixels"))
-            ]
-        ),
+        routedem.MODEL_SPEC.get_input("dem_path"),
+        routedem.MODEL_SPEC.get_input("dem_band_index"),
+        routedem.MODEL_SPEC.get_input("algorithm"),
         spec.StringInput(
             id="threshold_flow_accumulation_range",
             name=gettext("threshold flow accumulation value range"),
@@ -83,41 +60,18 @@ MODEL_SPEC = spec.ModelSpec(
             display_name="start_value:stop_value:step_value",
             regexp="^[0-9]+:[0-9]+:[1-9][0-9]*$"
         ),
-        spec.BooleanInput(
-            id="calculate_downslope_distance",
-            name=gettext("calculate distance to stream"),
-            about=gettext(
-                "Calculate flow distance from each pixel to a stream as defined in the"
-                " Calculate Streams output."
-            ),
-            required=False,
+        routedem.MODEL_SPEC.get_input("calculate_downslope_distance").model_copy(
+            update=dict(allowed=True)
         ),
-        spec.BooleanInput(
-            id="calculate_slope",
-            name=gettext("calculate slope"),
-            about=gettext("Calculate percent slope from the provided DEM."),
-            required=False
+        routedem.MODEL_SPEC.get_input("calculate_slope"),
+        routedem.MODEL_SPEC.get_input("calculate_stream_order").model_copy(
+            update=dict(allowed="algorithm == 'D8'")
         ),
-        spec.BooleanInput(
-            id="calculate_stream_order",
-            name=gettext("calculate strahler stream orders (D8 only)"),
-            about=gettext("Calculate the Strahler Stream order."),
-            required=False,
-            allowed="algorithm == 'D8'"
-        ),
-        spec.BooleanInput(
-            id="calculate_subwatersheds",
-            name=gettext("calculate subwatersheds (D8 only)"),
-            about=gettext("Determine subwatersheds from the stream order."),
-            required=False,
-            allowed="calculate_stream_order and algorithm == 'D8'"
-        )
+        routedem.MODEL_SPEC.get_input("calculate_subwatersheds"),
     ],
     outputs=[
         spec.TASKGRAPH_CACHE,
-        spec.FILLED_DEM.model_copy(update=dict(
-            id="filled",
-            path="filled.tif")),
+        routedem.MODEL_SPEC.get_output("filled"),
         spec.FLOW_ACCUMULATION,
         spec.FLOW_DIRECTION,
         spec.SLOPE.model_copy(update=dict(
@@ -125,190 +79,32 @@ MODEL_SPEC = spec.ModelSpec(
         spec.STREAM.model_copy(update=dict(
             id="stream_mask_[TFA]",
             path="stream_mask_tfa_[TFA].tif")),
-        spec.VectorOutput(
+        routedem.MODEL_SPEC.get_output("strahler_stream_order").model_copy(update=dict(
             id="strahler_stream_order_[TFA]",
             path="strahler_stream_order_tfa_[TFA].gpkg",
-            about=gettext(
-                "A vector of line segments indicating the Strahler stream order and other"
-                " properties of each stream segment."
-            ),
-            created_if="algorithm == 'd8' and calculate_stream_order",
-            geometry_types={"LINESTRING"},
-            fields=[
-                spec.NumberOutput(
-                    id="order", about=gettext("The Strahler stream order."), units=u.none
-                ),
-                spec.NumberOutput(
-                    id="river_id",
-                    about=gettext(
-                        "A unique identifier used by all stream segments that connect to"
-                        " the same outlet."
-                    ),
-                    units=u.none
-                ),
-                spec.NumberOutput(
-                    id="drop_distance",
-                    about=gettext(
-                        "The drop distance in DEM elevation units from the upstream to"
-                        " downstream component of this stream segment."
-                    ),
-                    units=u.none
-                ),
-                spec.NumberOutput(
-                    id="outlet",
-                    about=gettext("1 if this segment is an outlet, 0 if it is not."),
-                    units=u.none
-                ),
-                spec.NumberOutput(
-                    id="us_fa",
-                    about=gettext(
-                        "The flow accumulation value at the upstream end of the stream"
-                        " segment."
-                    ),
-                    units=u.pixel
-                ),
-                spec.NumberOutput(
-                    id="ds_fa",
-                    about=gettext(
-                        "The flow accumulation value at the downstream end of the stream"
-                        " segment."
-                    ),
-                    units=u.pixel
-                ),
-                spec.NumberOutput(
-                    id="thresh_fa",
-                    about=gettext(
-                        "The final threshold flow accumulation value used to determine"
-                        " the river segments."
-                    ),
-                    units=u.pixel
-                ),
-                spec.NumberOutput(
-                    id="upstream_d8_dir",
-                    about=gettext("The direction of flow immediately upstream."),
-                    units=u.none
-                ),
-                spec.NumberOutput(
-                    id="ds_x",
-                    about=gettext(
-                        "The DEM X coordinate for the outlet in pixels from the origin."
-                    ),
-                    units=u.pixel
-                ),
-                spec.NumberOutput(
-                    id="ds_y",
-                    about=gettext(
-                        "The DEM Y coordinate for the outlet in pixels from the origin."
-                    ),
-                    units=u.pixel
-                ),
-                spec.NumberOutput(
-                    id="ds_x_1",
-                    about=gettext(
-                        "The DEM X coordinate that is 1 pixel upstream from the outlet."
-                    ),
-                    units=u.pixel
-                ),
-                spec.NumberOutput(
-                    id="ds_y_1",
-                    about=gettext(
-                        "The DEM Y coordinate that is 1 pixel upstream from the outlet."
-                    ),
-                    units=u.pixel
-                ),
-                spec.NumberOutput(
-                    id="us_x",
-                    about=gettext("The DEM X coordinate for the upstream inlet."),
-                    units=u.pixel
-                ),
-                spec.NumberOutput(
-                    id="us_y",
-                    about=gettext("The DEM Y coordinate for the upstream inlet."),
-                    units=u.pixel
-                )
-            ]
-        ),
-        spec.VectorOutput(
+            created_if="algorithm == 'd8' and calculate_stream_order"
+        )),
+        routedem.MODEL_SPEC.get_output("subwatersheds").model_copy(update=dict(
             id="subwatersheds_[TFA]",
             path="subwatersheds_tfa_[TFA].gpkg",
-            about=gettext(
-                "A GeoPackage with polygon features representing subwatersheds.  A new"
-                " subwatershed is created for each tributary of a stream and is"
-                " influenced greatly by your choice of Threshold Flow Accumulation value."
-            ),
-            created_if="algorithm == 'd8' and calculate_subwatersheds",
-            geometry_types={"POLYGON"},
-            fields=[
-                spec.NumberOutput(
-                    id="stream_id",
-                    about=gettext(
-                        "A unique stream id, matching the one in the Strahler stream"
-                        " order vector."
-                    ),
-                    units=u.none
-                ),
-                spec.NumberOutput(
-                    id="terminated_early",
-                    about=gettext(
-                        "Indicates whether generation of this subwatershed terminated"
-                        " early (1) or completed as expected (0). If you encounter a (1),"
-                        " please let us know via the forums,"
-                        " community.naturalcapitalproject.org."
-                    ),
-                    units=u.none
-                ),
-                spec.NumberOutput(
-                    id="outlet_x",
-                    about=gettext(
-                        "The X coordinate in pixels from the origin of the outlet of the"
-                        " watershed. This can be useful when determining other properties"
-                        " of the watershed when indexing with the underlying raster data."
-                    ),
-                    units=u.none
-                ),
-                spec.NumberOutput(
-                    id="outlet_y",
-                    about=gettext(
-                        "The X coordinate in pixels from the origin of the outlet of the"
-                        " watershed. This can be useful when determining other properties"
-                        " of the watershed when indexing with the underlying raster data."
-                    ),
-                    units=u.none
-                )
-            ]
-        ),
-        spec.SingleBandRasterOutput(
+            created_if="algorithm == 'd8' and calculate_subwatersheds"
+        )),
+        routedem.MODEL_SPEC.get_output("downslope_distance").model_copy(update=dict(
             id="downslope_distance_[TFA]",
-            path="downslope_distance_tfa_[TFA].tif",
-            about=gettext("Flow distance from each pixel to a stream."),
-            data_type=float,
-            units=u.pixel
-        )
+            path="downslope_distance_tfa_[TFA].tif"
+        ))
     ]
 )
 
 
-_ROUTING_FUNCS = {
-    'd8': {
-        'flow_accumulation': pygeoprocessing.routing.flow_accumulation_d8,
-        'flow_direction': pygeoprocessing.routing.flow_dir_d8,
-        'threshold_flow': pygeoprocessing.routing.extract_streams_d8,
-        'distance_to_channel': pygeoprocessing.routing.distance_to_channel_d8,
-    },
-    'mfd': {
-        'flow_accumulation': pygeoprocessing.routing.flow_accumulation_mfd,
-        'flow_direction': pygeoprocessing.routing.flow_dir_mfd,
-        'threshold_flow': pygeoprocessing.routing.extract_streams_mfd,
-        'distance_to_channel': pygeoprocessing.routing.distance_to_channel_mfd,
-    }
-}
-
-
 def execute(args):
-    """RouteDEM: Hydrological routing.
+    """RouteDEM (hydrological routing) with Threshold Flow Accumulation Range.
 
-    This model exposes the pygeoprocessing D8 and Multiple Flow Direction
-    routing functionality as an InVEST model.
+    This plugin provides a modified version of the InVEST RouteDEM utility.
+    RouteDEM exposes the pygeoprocessing D8 and Multiple Flow Direction routing
+    functionality as an InVEST model. This version includes a "Threshold Flow
+    Accumulation Range" input, which allows it to compute outputs for a range of
+    TFAs in a single run.
 
     This tool will always fill pits on the input DEM.
 
@@ -344,7 +140,7 @@ def execute(args):
     """
     args, file_registry, graph = MODEL_SPEC.setup(args)
 
-    routing_funcs = _ROUTING_FUNCS[args['algorithm']]
+    routing_funcs = routedem._ROUTING_FUNCS[args['algorithm']]
 
     band_index = args['dem_band_index'] if args['dem_band_index'] else 1
 
@@ -505,7 +301,7 @@ def validate(args, limit_to=None):
         if int(args['dem_band_index']) > raster_info['n_bands']:
             validation_warnings.append((
                 ['dem_band_index'],
-                INVALID_BAND_INDEX_MSG.format(maximum=raster_info['n_bands'])))
+                routedem.INVALID_BAND_INDEX_MSG.format(maximum=raster_info['n_bands'])))
 
     if 'threshold_flow_accumulation_range' not in invalid_keys:
         _range = _convert_to_range(args['threshold_flow_accumulation_range'])
