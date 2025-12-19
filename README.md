@@ -24,6 +24,34 @@ If you wanted the model to calculate results for Threshold Flow Accumulation val
 
 For more information on choosing Threshold Flow Accumulation values, see the InVEST Data Sources documentation on [Threshold Flow Accumulation](https://storage.googleapis.com/releases.naturalcapitalproject.org/invest-userguide/latest/en/data_sources.html#threshold-flow-accumulation).
 
+## Outputs
+- **filled.tif** (type: raster; units: meters): Map of elevation after any pits are filled.
+- **flow_accumulation.tif** (type: raster): Map of flow accumulation.
+- **flow_direction.tif** (type: raster): MFD flow direction. Note: the pixel values should not be interpreted directly. Each 32-bit number consists of 8 4-bit numbers. Each 4-bit number represents the proportion of flow into one of the eight neighboring pixels.
+- **slope.tif** (type: raster): Percent slope, calculated from the pit-filled DEM. 100 is equivalent to a 45 degree slope.
+- **stream_tfa_[TFA].tif** (type: raster): Stream network, created using flow direction and flow accumulation derived from the DEM and Threshold Flow Accumulation. Values of 1 represent streams, values of 0 are non-stream pixels.
+- **strahler_stream_order_tfa_[TFA].gpkg** (type: vector): A vector of line segments indicating the Strahler stream order and other properties of each stream segment. Created if `algorithm == 'd8'` and `calculate_stream_order` is True. Fields:
+  - **order**: The Strahler stream order.
+  - **river_id**: A unique identifier used by all stream segments that connect to the same outlet.
+  - **drop_distance**: The drop distance in DEM elevation units from the upstream to downstream component of this stream segment.
+  - **outlet**: 1 if this segment is an outlet, 0 if it is not.
+  - **us_fa** (units: pixel): The flow accumulation value at the upstream end of the stream segment.
+  - **ds_fa** (units: pixel): The flow accumulation value at the downstream end of the stream segment.
+  - **thresh_fa** (units: pixel): The final threshold flow accumulation value used to determine the river segments.
+  - **upstream_d8_dir**: The direction of flow immediately upstream.
+  - **ds_x** (units: pixel): The DEM X coordinate for the outlet in pixels from the origin.
+  - **ds_y** (units: pixel): The DEM Y coordinate for the outlet in pixels from the origin.
+  - **ds_x_1** (units: pixel): The DEM X coordinate that is 1 pixel upstream from the outlet.
+  - **ds_y_1** (units: pixel): The DEM Y coordinate that is 1 pixel upstream from the outlet.
+  - **us_x** (units: pixel): The DEM X coordinate for the upstream inlet.
+  - **us_y** (units: pixel): The DEM Y coordinate for the upstream inlet.
+- **subwatersheds_tfa_[TFA].gpkg** (type: vector): A GeoPackage with polygon features representing subwatersheds. A new subwatershed is created for each tributary of a stream and is influenced greatly by your choice of Threshold Flow Accumulation value. Created if `algorithm == 'd8'` and `calculate_subwatersheds` is True. Fields:
+  - **stream_id**: A unique stream id, matching the one in the Strahler stream order vector.
+  - **terminated_early**: Indicates whether generation of this subwatershed terminated early (1) or completed as expected (0). If you encounter a (1), please let us know via the forums, community.naturalcapitalproject.org.
+  - **outlet_x**: The X coordinate in pixels from the origin of the outlet of the watershed. This can be useful when determining other properties of the watershed when indexing with the underlying raster data.
+  - **outlet_y**: The X coordinate in pixels from the origin of the outlet of the watershed. This can be useful when determining other properties of the watershed when indexing with the underlying raster data.
+- **downslope_distance_tfa_[TFA].tif** (type: raster; units: pixels): Flow distance from each pixel to a stream. Calculated if `calculate_downslope_distance` is True.
+
 ## Sample Data
 A datastack JSON file is provided in this repo along with a sample DEM raster for example/testing purposes only.
 
