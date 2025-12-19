@@ -77,8 +77,8 @@ MODEL_SPEC = spec.ModelSpec(
         spec.SLOPE.model_copy(update=dict(
             created_if='calculate_slope')),
         spec.STREAM.model_copy(update=dict(
-            id="stream_mask_[TFA]",
-            path="stream_mask_tfa_[TFA].tif")),
+            id="stream_[TFA]",
+            path="stream_tfa_[TFA].tif")),
         routedem.MODEL_SPEC.get_output("strahler_stream_order").model_copy(update=dict(
             id="strahler_stream_order_[TFA]",
             path="strahler_stream_order_tfa_[TFA].gpkg",
@@ -91,7 +91,8 @@ MODEL_SPEC = spec.ModelSpec(
         )),
         routedem.MODEL_SPEC.get_output("downslope_distance").model_copy(update=dict(
             id="downslope_distance_[TFA]",
-            path="downslope_distance_tfa_[TFA].tif"
+            path="downslope_distance_tfa_[TFA].tif",
+            created_if="calculate_downslope_distance"
         ))
     ]
 )
@@ -193,7 +194,7 @@ def execute(args):
         stream_extraction_kwargs = {
             'flow_accum_raster_path_band': (file_registry['flow_accumulation'], 1),
             'flow_threshold': flow_threshold,
-            'target_stream_raster_path': file_registry['stream_mask_[TFA]', flow_threshold],
+            'target_stream_raster_path': file_registry['stream_[TFA]', flow_threshold],
         }
         if args['algorithm'] == 'mfd':
             stream_extraction_kwargs['flow_dir_mfd_path_band'] = (
@@ -201,7 +202,7 @@ def execute(args):
         stream_threshold_task = graph.add_task(
             routing_funcs['threshold_flow'],
             kwargs=stream_extraction_kwargs,
-            target_path_list=[file_registry['stream_mask_[TFA]', flow_threshold]],
+            target_path_list=[file_registry['stream_[TFA]', flow_threshold]],
             dependent_task_list=[flow_accum_task],
             task_name=f'stream_thresholding_{args["algorithm"]}_{flow_threshold}')
 
@@ -209,7 +210,7 @@ def execute(args):
             graph.add_task(
                 routing_funcs['distance_to_channel'],
                 args=((file_registry['flow_direction'], 1),
-                      (file_registry['stream_mask_[TFA]', flow_threshold], 1),
+                      (file_registry['stream_[TFA]', flow_threshold], 1),
                       file_registry['downslope_distance_[TFA]', flow_threshold]),
                 target_path_list=[file_registry['downslope_distance_[TFA]', flow_threshold]],
                 task_name=f'downslope_distance_{args["algorithm"]}_{flow_threshold}',
