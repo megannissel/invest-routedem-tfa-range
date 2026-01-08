@@ -31,9 +31,9 @@ For more information on choosing Threshold Flow Accumulation values, see the InV
 - **slope.tif** (type: raster): Percent slope, calculated from the pit-filled DEM. 100 is equivalent to a 45 degree slope.
 - **stream_tfa_[TFA].tif** (type: raster): Stream network, created using flow direction and flow accumulation derived from the DEM and Threshold Flow Accumulation. Values of 1 represent streams, values of 0 are non-stream pixels.
 - **strahler_stream_order_tfa_[TFA].gpkg** (type: vector): A vector of line segments indicating the Strahler stream order and other properties of each stream segment. Created if `algorithm == 'd8'` and `calculate_stream_order` is True. Fields:
-  - **order**: The Strahler stream order.
+  - **order**: The Strahler stream order. A value of 1 is given to the smallest upstream unbranched tributaries, referred to as first-order streams. The order increases when streams of the same order intersect, e.g. the intersection of two first-order streams will create a second-order stream. Where streams of different orders intersect, the order of the highest-ordered segment is retained. The highest stream order is found on the main stream segment in the downstream portion of the watershed.
   - **river_id**: A unique identifier used by all stream segments that connect to the same outlet.
-  - **drop_distance**: The drop distance in DEM elevation units from the upstream to downstream component of this stream segment.
+  - **drop_distance**: The vertical distance, in DEM elevation units, from the upstream to downstream component of this stream segment.
   - **outlet**: 1 if this segment is an outlet, 0 if it is not.
   - **us_fa** (units: pixel): The flow accumulation value at the upstream end of the stream segment.
   - **ds_fa** (units: pixel): The flow accumulation value at the downstream end of the stream segment.
@@ -47,7 +47,7 @@ For more information on choosing Threshold Flow Accumulation values, see the InV
   - **us_y** (units: pixel): The DEM Y coordinate for the upstream inlet.
 - **subwatersheds_tfa_[TFA].gpkg** (type: vector): A GeoPackage with polygon features representing subwatersheds. A new subwatershed is created for each tributary of a stream and is influenced greatly by your choice of Threshold Flow Accumulation value. Created if `algorithm == 'd8'` and `calculate_subwatersheds` is True. Fields:
   - **stream_id**: A unique stream id, matching the one in the Strahler stream order vector.
-  - **terminated_early**: Indicates whether generation of this subwatershed terminated early (1) or completed as expected (0). If you encounter a (1), please let us know via the forums, community.naturalcapitalproject.org.
+  - **terminated_early**: Indicates whether generation of this subwatershed terminated early (1) or completed as expected (0). If you encounter a (1), please let us know via the [Forum](https://community.naturalcapitalalliance.org).
   - **outlet_x**: The X coordinate in pixels from the origin of the outlet of the watershed. This can be useful when determining other properties of the watershed when indexing with the underlying raster data.
   - **outlet_y**: The X coordinate in pixels from the origin of the outlet of the watershed. This can be useful when determining other properties of the watershed when indexing with the underlying raster data.
 - **downslope_distance_tfa_[TFA].tif** (type: raster; units: pixels): Flow distance from each pixel to a stream. Calculated if `calculate_downslope_distance` is True.
